@@ -1,0 +1,12 @@
+<project name="JasperReportsCompilation" default="compile" basedir=".">
+    <taskdef name="jrc" classname="net.sf.jasperreports.engine.JasperCompileManager" classpath="./lib/jasperreports-6.6.0.jar " />
+
+    <target name="compile">
+        <jrc srcdir="src/jrxml" destdir="build/jasper">
+            <fileset dir="src/jrxml">
+                <include name="**/*.jrxml" />
+            </fileset>
+        </jrc>
+    </target>
+</project>
+

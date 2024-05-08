@@ -1,0 +1,429 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 6.21.0.final using JasperReports Library version 6.10.0  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="Meter_Reading_Task_per_user_old" pageWidth="1100" pageHeight="842" columnWidth="1060" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="9308dafc-807f-451b-b425-c5a057f3ab64">
+	<property name="ireport.zoom" value="1.5"/>
+	<property name="ireport.x" value="0"/>
+	<property name="ireport.y" value="0"/>
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="ADAPTER_TEST"/>
+	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
+	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w1" value="192"/>
+	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w2" value="803"/>
+	<property name="com.jaspersoft.studio.property.dataset.dialog.DatasetDialog.sash.w1" value="458"/>
+	<property name="com.jaspersoft.studio.property.dataset.dialog.DatasetDialog.sash.w2" value="528"/>
+	<property name="com.jaspersoft.studio.unit." value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.pageHeight" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.pageWidth" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.topMargin" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.bottomMargin" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.leftMargin" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.rightMargin" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.columnWidth" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.columnSpacing" value="pixel"/>
+	<parameter name="P_PD_ID" class="java.lang.String">
+		<defaultValueExpression><![CDATA[]]></defaultValueExpression>
+	</parameter>
+	<parameter name="P_USR_ID" class="java.lang.String">
+		<defaultValueExpression><![CDATA[]]></defaultValueExpression>
+	</parameter>
+	<parameter name="P_BRN_ID" class="java.math.BigDecimal">
+		<defaultValueExpression><![CDATA[]]></defaultValueExpression>
+	</parameter>
+	<parameter name="SUBREPORT_DIR" class="java.lang.String" isForPrompting="false">
+		<defaultValueExpression><![CDATA[""]]></defaultValueExpression>
+	</parameter>
+	<parameter name="P_SCHEME" class="java.lang.String">
+		<defaultValueExpression><![CDATA[]]></defaultValueExpression>
+	</parameter>
+	<parameter name="P_ZONE" class="java.lang.String">
+		<defaultValueExpression><![CDATA[]]></defaultValueExpression>
+	</parameter>
+	<parameter name="P_ROUTE" class="java.lang.String">
+		<defaultValueExpression><![CDATA[]]></defaultValueExpression>
+	</parameter>
+	<parameter name="P_TASK_STATUS" class="java.lang.String"/>
+	<parameter name="P_START_DATE" class="java.lang.String"/>
+	<parameter name="P_END_DATE" class="java.lang.String"/>
+	<queryString>
+		<![CDATA[WITH Y AS (
+                           SELECT distinct
+                                stp_users.usr_first_name||' '||stp_users.usr_last_name as meter_reader_name,zn_name,
+                                  usr_id,
+                                  periods.pd_code,
+                                  periods.pd_code||'-'||periods.pd_year as period_cycle,
+                                 sc_name || '-'||zn_name||'-' ||rt_name as task_name,
+                                 zn_id,rt_id,c_acc_id,c_acc_number,c_account_name,c_mtr_no,c_mobile_number,
+                                js_smart_revenue.get_account_status_dynamic_name(c_account_status)as c_account_status,
+                                           tsk_pd_id,tskd_status,tskd_id,
+(select concat(pd_code,'-', pd_year) from js_smart_revenue.meter_reading ,   js_core.periods
+ where  periods.pd_id = meter_reading.pd_id and mtr_cust_acc =c_acc_id and mtr_status ='ACTIVE'  ORDER BY meter_reading.pd_id DESC limit 1) AS PREV_CYCLE
+                                           
+
+                           FROM js_smart_revenue.task,
+                                js_smart_revenue.task_detail,
+                                js_core.stp_users,
+                                js_core.periods,
+                                js_smart_revenue.schemes,
+                                js_smart_revenue.zones,
+                                js_smart_revenue.routes,
+                                js_smart_revenue.customer_accounts,
+                                js_core.f_customer
+
+                           WHERE task.tsk_pd_id = periods.pd_id
+                             and task_detail.tskd_tsk_id = task.tsk_id
+                             and task.tsk_pd_id =  cast($P{P_PD_ID} as BIGINT)
+                             and upper(tsk_type) = 'METERREADING'
+                             AND tskd_assign_id = COALESCE( cast($P{P_USR_ID} as NUMERIC),tskd_assign_id)
+                             and tsk_status != 'EXPIRED'
+                              and tskd_status != 'EXPIRED'
+                              AND tskd_status=coalesce(CAST($P{P_TASK_STATUS} AS VARCHAR) ,tskd_status)
+                             and tskd_assign_id = usr_id
+                             AND tskd_acc_id = c_acc_id
+                             AND c_cust_id = customer_id
+                             AND v_rt_id = rt_id
+                             AND zn_id = rt_zn_id
+                             AND sc_id = zn_sc_id
+                           AND sc_id=coalesce(cast($P{P_SCHEME} as bigint),sc_id)
+                          AND zn_id=coalesce(cast($P{P_ZONE} as bigint),zn_id)
+                         AND rt_id=coalesce(cast($P{P_ROUTE} as bigint),rt_id)
+                         AND tskd_completed_date BETWEEN js_core.getnormaldate($P{P_START_DATE}) AND  js_core.getnormaldate($P{P_END_DATE})                        
+                       
+                         and case
+                     when js_core.get_sysparameter_value('SMART_GATE_ID') = '3126' and c_account_status = 'TERMINATED'
+                         then
+                         NULL
+                     else c_account_status = c_account_status
+               end
+
+                       )
+
+                       SELECT task_name,
+                              meter_reader_name,zn_name,
+                              c_acc_number,c_account_name,c_mtr_no,c_mobile_number,
+                              tskd_status,
+                              usr_id as mtr_usr_id,tsk_pd_id,period_cycle,tskd_id,
+                            PREV_CYCLE, c_account_status
+                              
+                       FROM Y  group by usr_id, zn_name,task_name ,meter_reader_name,c_acc_number,zn_id,
+                       c_account_name,c_mtr_no,c_mobile_number,c_account_status,
+                                           tsk_pd_id,tskd_status,tskd_id,period_cycle,PREV_CYCLE order by usr_id,zn_id]]>
+	</queryString>
+	<field name="task_name" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.label" value="task_name"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="routes"/>
+	</field>
+	<field name="meter_reader_name" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.label" value="meter_reader_name"/>
+	</field>
+	<field name="zn_name" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.label" value="zn_name"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="zones"/>
+	</field>
+	<field name="c_acc_number" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.label" value="c_acc_number"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="customer_accounts"/>
+	</field>
+	<field name="c_account_name" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.label" value="c_account_name"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="customer_accounts"/>
+	</field>
+	<field name="c_mtr_no" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.label" value="c_mtr_no"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="customer_accounts"/>
+	</field>
+	<field name="c_account_status" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.label" value="c_account_status"/>
+	</field>
+	<field name="c_mobile_number" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.label" value="c_mobile_number"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="customer_accounts"/>
+	</field>
+	<field name="tskd_status" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.label" value="tskd_status"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="task_detail"/>
+	</field>
+	<field name="mtr_usr_id" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.label" value="mtr_usr_id"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="stp_users"/>
+	</field>
+	<field name="tsk_pd_id" class="java.lang.Long">
+		<property name="com.jaspersoft.studio.field.label" value="tsk_pd_id"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="task"/>
+	</field>
+	<field name="period_cycle" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.label" value="period_cycle"/>
+	</field>
+	<field name="tskd_id" class="java.lang.Long">
+		<property name="com.jaspersoft.studio.field.label" value="tskd_id"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="task_detail"/>
+	</field>
+	<field name="prev_cycle" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.label" value="prev_cycle"/>
+	</field>
+	<variable name="count" class="java.math.BigDecimal" resetType="Group" resetGroup="user" calculation="Count">
+		<variableExpression><![CDATA[$F{tskd_id}]]></variableExpression>
+	</variable>
+	<variable name="user_total" class="java.math.BigDecimal" resetType="Group" resetGroup="user" calculation="Count">
+		<variableExpression><![CDATA[$F{tskd_id}]]></variableExpression>
+	</variable>
+	<group name="user">
+		<groupExpression><![CDATA[$F{mtr_usr_id}]]></groupExpression>
+		<groupHeader>
+			<band height="40">
+				<staticText>
+					<reportElement x="0" y="0" width="36" height="20" uuid="a45b3771-52d0-4ca0-9def-4929167507c8"/>
+					<textElement>
+						<font isBold="true"/>
+					</textElement>
+					<text><![CDATA[USER:]]></text>
+				</staticText>
+				<textField>
+					<reportElement x="36" y="0" width="174" height="20" uuid="93587cdf-fee3-4cfa-9c3f-e06d3e905322"/>
+					<textElement>
+						<font isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$F{meter_reader_name}]]></textFieldExpression>
+				</textField>
+				<staticText>
+					<reportElement x="0" y="20" width="36" height="20" uuid="748e61fe-5345-41e3-a7fa-09e3cf914e8c"/>
+					<textElement>
+						<font isBold="true"/>
+					</textElement>
+					<text><![CDATA[#]]></text>
+				</staticText>
+				<staticText>
+					<reportElement x="36" y="20" width="84" height="20" uuid="23c9b3bd-90c0-4b7f-b265-89c8883f91e5"/>
+					<textElement>
+						<font isBold="true"/>
+					</textElement>
+					<text><![CDATA[Account No]]></text>
+				</staticText>
+				<staticText>
+					<reportElement x="120" y="20" width="144" height="20" uuid="c0b90433-a7f6-44f3-93ed-17df8850b4e4"/>
+					<textElement>
+						<font isBold="true"/>
+					</textElement>
+					<text><![CDATA[Account Name]]></text>
+				</staticText>
+				<staticText>
+					<reportElement x="264" y="20" width="86" height="20" uuid="3cb30cb3-42f0-4994-90ac-e7079edefb64"/>
+					<textElement>
+						<font isBold="true"/>
+					</textElement>
+					<text><![CDATA[Acc Meter No]]></text>
+				</staticText>
+				<staticText>
+					<reportElement x="440" y="20" width="92" height="20" uuid="4ed0c4f6-cd9d-4fba-9902-e1a7dcbf7f9e"/>
+					<textElement>
+						<font isBold="true"/>
+					</textElement>
+					<text><![CDATA[Task Status]]></text>
+				</staticText>
+				<staticText>
+					<reportElement x="350" y="20" width="90" height="20" uuid="9f5140f7-5001-4a3b-8b62-448d51813bde"/>
+					<textElement>
+						<font isBold="true"/>
+					</textElement>
+					<text><![CDATA[Account Status]]></text>
+				</staticText>
+				<staticText>
+					<reportElement x="532" y="20" width="110" height="20" uuid="a8ee5a13-5676-4f5f-b878-86a7fe5bc9b3"/>
+					<textElement>
+						<font isBold="true"/>
+					</textElement>
+					<text><![CDATA[Period]]></text>
+				</staticText>
+				<staticText>
+					<reportElement x="641" y="20" width="100" height="20" uuid="8f618d38-cbbb-4cd4-8f55-fe6d5b3e143b">
+						<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					</reportElement>
+					<textElement>
+						<font isBold="true"/>
+					</textElement>
+					<text><![CDATA[Mobile No.]]></text>
+				</staticText>
+				<staticText>
+					<reportElement x="740" y="20" width="100" height="20" uuid="acd3efc3-7798-4b98-a462-12f91bd84812">
+						<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					</reportElement>
+					<textElement>
+						<font isBold="true"/>
+					</textElement>
+					<text><![CDATA[Prev Cycle Read ]]></text>
+				</staticText>
+				<staticText>
+					<reportElement x="840" y="20" width="220" height="20" uuid="4ddec9a9-b7a8-4a20-ba95-4372c655adf4">
+						<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					</reportElement>
+					<textElement>
+						<font isBold="true"/>
+					</textElement>
+					<text><![CDATA[Scheme-zone-route]]></text>
+				</staticText>
+			</band>
+		</groupHeader>
+		<groupFooter>
+			<band height="20">
+				<staticText>
+					<reportElement x="264" y="0" width="38" height="20" uuid="3a0824be-afbf-4cc6-a0b3-9f24931e6ebf">
+						<property name="com.jaspersoft.studio.unit.y" value="px"/>
+					</reportElement>
+					<textElement>
+						<font isBold="true"/>
+					</textElement>
+					<text><![CDATA[Total]]></text>
+				</staticText>
+				<textField>
+					<reportElement x="302" y="0" width="100" height="20" uuid="e00051a6-7124-45f4-8632-714d879c5a6e"/>
+					<textFieldExpression><![CDATA[$V{user_total}]]></textFieldExpression>
+				</textField>
+			</band>
+		</groupFooter>
+	</group>
+	<group name="zone group">
+		<groupExpression><![CDATA[$F{zn_name}]]></groupExpression>
+		<groupHeader>
+			<band height="15">
+				<textField>
+					<reportElement x="120" y="0" width="144" height="15" uuid="7e966baf-0d08-4df8-87ff-d7786d13e19c">
+						<property name="com.jaspersoft.studio.unit.height" value="px"/>
+						<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					</reportElement>
+					<textElement>
+						<font isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$F{zn_name}]]></textFieldExpression>
+				</textField>
+				<staticText>
+					<reportElement x="36" y="0" width="84" height="15" uuid="58f105b5-e144-45fd-a644-1ca569c72bf2">
+						<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					</reportElement>
+					<textElement>
+						<font isBold="true"/>
+					</textElement>
+					<text><![CDATA[ZONE]]></text>
+				</staticText>
+			</band>
+		</groupHeader>
+		<groupFooter>
+			<band/>
+		</groupFooter>
+	</group>
+	<background>
+		<band/>
+	</background>
+	<title>
+		<band height="87">
+			<subreport>
+				<reportElement x="0" y="0" width="1060" height="87" uuid="567216b3-9e22-46d2-9e62-59da0685b76d"/>
+				<subreportParameter name="P_BRN_ID">
+					<subreportParameterExpression><![CDATA[$P{P_BRN_ID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR} + "RPT_HEADER.jasper"]]></subreportExpression>
+			</subreport>
+			<staticText>
+				<reportElement x="643" y="67" width="264" height="20" uuid="6ae109dd-ea0d-49ea-a8dd-f1a03180c8b8">
+					<property name="com.jaspersoft.studio.unit.y" value="pixel"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[METER READING TASK  PER USER LISTING]]></text>
+			</staticText>
+		</band>
+	</title>
+	<detail>
+		<band height="15">
+			<textField>
+				<reportElement x="532" y="0" width="110" height="15" uuid="6e496b51-9463-444c-a10e-6b87a79aeeb6">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<textElement>
+					<font fontName="SansSerif" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{period_cycle}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="350" y="0" width="90" height="15" uuid="6ba71997-ac72-4d36-8d7e-d6cb399d1a5c">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<textElement>
+					<font fontName="SansSerif" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{c_account_status}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="0" y="0" width="36" height="15" uuid="c8b2208f-be45-410f-a5c0-921358fce038"/>
+				<textElement>
+					<font fontName="SansSerif" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{count}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="36" y="0" width="84" height="15" uuid="ff9bf566-2816-4f09-bbbb-b07b1f464d08">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<textElement>
+					<font fontName="SansSerif" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{c_acc_number}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="440" y="0" width="92" height="15" uuid="a81cef5c-aad5-4a92-965a-ed3c27f9e4c9">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<textElement>
+					<font fontName="SansSerif" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{tskd_status}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement x="264" y="0" width="86" height="15" uuid="26d2dd9d-d3f8-441a-bc05-006ab175cc04">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<textElement>
+					<font fontName="SansSerif" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{c_mtr_no}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="120" y="0" width="144" height="15" uuid="5784abe9-e516-49e5-a4a1-17c5851ecb9f">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<textElement>
+					<font fontName="SansSerif" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{c_account_name}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="641" y="0" width="100" height="15" uuid="04822e1f-df7c-476c-a4c8-3eff659bdac2">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<textElement>
+					<font size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{c_mobile_number}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement x="740" y="0" width="100" height="15" uuid="8276f652-412a-499f-bb01-fb508ca37fcb"/>
+				<textElement>
+					<font size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{prev_cycle}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="840" y="0" width="220" height="15" uuid="b7f9fb08-bcc1-4388-a27d-5d06cc537a96"/>
+				<textFieldExpression><![CDATA[$F{task_name}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+	<columnFooter>
+		<band/>
+	</columnFooter>
+	<pageFooter>
+		<band/>
+	</pageFooter>
+	<summary>
+		<band/>
+	</summary>
+</jasperReport>
